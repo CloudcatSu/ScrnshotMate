@@ -54,7 +54,8 @@ class PreviewGrid(QWidget):
         self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_icon.setContentsMargins(0, 0, 0, 20)
         
-        lbl_version = QLabel("v1.1.0")
+        from utils.helpers import APP_VERSION
+        lbl_version = QLabel(f"v{APP_VERSION}")
         lbl_version.setStyleSheet("font-size: 18px; color: #888;")
         lbl_version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
@@ -202,12 +203,12 @@ class PreviewGrid(QWidget):
             if not pixmap.isNull():
                 item.setIcon(QIcon(pixmap))
             
+            self.list_widget.addItem(item)
+
             if is_anomaly:
                 item.setBackground(QColor(255, 200, 200)) # Light red background
                 item.setForeground(QColor(200, 0, 0))
-                item.setSelected(True)
-            
-            self.list_widget.addItem(item)
+                item.setSelected(True)  # 須在 addItem 之後才會生效
 
         # Update status
         if self.has_anomalies:

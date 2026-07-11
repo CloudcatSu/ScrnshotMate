@@ -9,7 +9,7 @@ class BatchProcessorWorker(QObject):
     finished = Signal(str) # Emits the final path or message
     error = Signal(str)
 
-    def __init__(self, file_paths, crop_rect, export_mode, export_format, export_dir, base_name, rename_rule, start_index=1):
+    def __init__(self, file_paths, crop_rect, export_mode, export_format, export_dir, base_name, rename_rule):
         """
         crop_rect: tuple (x, y, width, height)
         export_mode: 'overwrite' or 'save_as'
@@ -24,7 +24,6 @@ class BatchProcessorWorker(QObject):
         self.export_dir = export_dir
         self.base_name = base_name
         self.rename_rule = rename_rule
-        self.start_index = start_index
 
     def run(self):
         try:
@@ -39,6 +38,10 @@ class BatchProcessorWorker(QObject):
             pdf_images = []
             
             for i, file_path in enumerate(self.file_paths):
+                if QThread.currentThread().isInterruptionRequested():
+                    self.finished.emit("Cancelled")
+                    return
+
                 path = Path(file_path)
                 with Image.open(path) as img:
                     # Keep ICC profile or exif if needed, but for simple web formats standard is fine
@@ -73,20 +76,21 @@ class BatchProcessorWorker(QObject):
                     if self.export_mode == 'overwrite':
                         out_path = path.with_suffix(ext)
                         # We save to a temp name first, then move original to trash, then rename.
-                        # Wait, if format changes, it's a different file. If format is same, we must be careful.
                         temp_out = out_path.with_name(f".tmp_{out_path.name}")
                         cropped_img.save(temp_out, format=out_format)
-                        
+
                         try:
                             send2trash(str(path))
                         except Exception as e:
-                            print(f"Failed to trash {path}: {e}")
-                            
+                            # 丟垃圾桶失敗時中止，避免下一步 rename 永久覆蓋原圖
+                            temp_out.unlink(missing_ok=True)
+                            raise RuntimeError(f"無法將「{path.name}」丟至垃圾桶，為保護原圖已中止處理。") from e
+
                         temp_out.rename(out_path)
                     else:
                         # Save As mode
                         new_name = self.generate_new_name(path.stem, i)
-                        out_path = Path(self.export_dir) / f"{new_name}{ext}"
+                        out_path = self.unique_path(Path(self.export_dir) / f"{new_name}{ext}")
                         cropped_img.save(out_path, format=out_format)
                 
                 if self.export_format != 'pdf':
@@ -95,8 +99,8 @@ class BatchProcessorWorker(QObject):
             # Handle PDF generation
             if self.export_format == 'pdf' and pdf_images:
                 pdf_name = f"{self.base_name}.pdf" if self.base_name else f"{Path(self.file_paths[0]).stem}_merged.pdf"
-                pdf_path = Path(self.export_dir) / pdf_name
-                
+                pdf_path = self.unique_path(Path(self.export_dir) / pdf_name)
+
                 # PIL save to PDF
                 first_img = pdf_images[0]
                 first_img.save(
@@ -106,15 +110,7 @@ class BatchProcessorWorker(QObject):
                     save_all=True,
                     append_images=pdf_images[1:]
                 )
-                
-                # If overwrite mode and format was pdf, we should trash originals?
-                if self.export_mode == 'overwrite':
-                    for file_path in self.file_paths:
-                        try:
-                            send2trash(file_path)
-                        except Exception:
-                            pass
-                            
+
                 self.progress.emit(100)
                 self.finished.emit(str(pdf_path))
             else:
@@ -139,12 +135,25 @@ class BatchProcessorWorker(QObject):
             suffix = self.rename_rule.get('suffix', '')
             return f"{prefix}{original_stem}{suffix}"
         elif rule_type == 'format':
-            base = self.rename_rule.get('base', original_stem)
+            base = self.rename_rule.get('base') or original_stem
             digits = self.rename_rule.get('digits', 3)
-            num = str(self.start_index + index).zfill(digits)
+            start = self.rename_rule.get('start', 1)
+            num = str(start + index).zfill(digits)
             return f"{base}{num}"
-            
+
         return original_stem
+
+    @staticmethod
+    def unique_path(out_path):
+        """檔名已存在時仿 Finder 自動加 (1)、(2)…，避免靜默覆蓋既有檔案。"""
+        if not out_path.exists():
+            return out_path
+        n = 1
+        while True:
+            candidate = out_path.with_name(f"{out_path.stem} ({n}){out_path.suffix}")
+            if not candidate.exists():
+                return candidate
+            n += 1
 
 def get_image_info(file_path):
     """Utility function to get image size and format."""

@@ -1,6 +1,8 @@
 import os
 import sys
 
+APP_VERSION = "1.2.0"
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:

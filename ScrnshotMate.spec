@@ -21,7 +21,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='ImageCropper',
+    name='ScrnshotMate',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -29,7 +29,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch='universal2',
+    target_arch='arm64',
     codesign_identity=None,
     entitlements_file=None,
 )
@@ -40,7 +40,7 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='ImageCropper',
+    name='ScrnshotMate',
 )
 app = BUNDLE(
     coll,

@@ -144,6 +144,8 @@ class MainWindow(QMainWindow):
         
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.error.connect(self.thread.quit)
+        self.worker.error.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
         
         self.progress_dialog.canceled.connect(self.thread.requestInterruption)
@@ -151,20 +153,25 @@ class MainWindow(QMainWindow):
         self.thread.start()
 
     def on_processing_finished(self, msg):
-        self.progress_dialog.setValue(100)
+        export_mode = self.worker.export_mode
         self.progress_dialog.close()
-        
+
+        if msg == "Cancelled":
+            QMessageBox.information(
+                self, "已取消",
+                "已停止處理。\n已處理完成的圖片維持結果，尚未處理的圖片保持原樣。"
+            )
+            return
+
         # Message matching the requirement
         display_msg = "處理完成！\n"
         if "Done" in msg:
-            if self.worker.export_mode == 'overwrite':
+            if export_mode == 'overwrite':
                 display_msg += "已將原圖片丟至垃圾桶，並存入新檔。"
             else:
                 display_msg += "圖片已另存新檔。"
         else:
             display_msg += msg # PDF path or other
-            if self.worker.export_mode == 'overwrite':
-                display_msg += "\n\n已將原圖片丟至垃圾桶。"
             
         QMessageBox.information(self, "完成", display_msg)
         
@@ -175,4 +182,3 @@ class MainWindow(QMainWindow):
     def on_processing_error(self, err):
         self.progress_dialog.close()
         QMessageBox.critical(self, "錯誤", f"處理時發生錯誤:\n{err}")
-        self.thread.quit()
