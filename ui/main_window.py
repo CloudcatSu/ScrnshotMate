@@ -1,7 +1,7 @@
 import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-    QStackedWidget, QMessageBox, QProgressDialog, QDialog
+    QStackedWidget, QMessageBox, QProgressDialog, QDialog, QApplication
 )
 from PySide6.QtCore import Qt, QThread
 
@@ -10,6 +10,7 @@ from ui.preview_grid import PreviewGrid
 from ui.crop_editor import CropEditor
 from ui.export_dialog import ExportDialog
 from core.image_processor import BatchProcessorWorker
+from ui import theme
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -30,36 +31,29 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         
         self.stacked_widget = QStackedWidget()
         
         # Page 0: Preview Grid
         self.preview_page = QWidget()
         preview_layout = QVBoxLayout(self.preview_page)
+        preview_layout.setContentsMargins(theme.SPACE["lg"], theme.SPACE["lg"], theme.SPACE["lg"], theme.SPACE["lg"])
+        preview_layout.setSpacing(theme.SPACE["md"])
         
         self.preview_grid = PreviewGrid()
         self.preview_grid.files_changed.connect(self.on_files_changed)
         
-        self.crop_btn = QPushButton("進入裁切 (Crop)")
-        self.crop_btn.setFixedHeight(50)
+        self.crop_btn = QPushButton("進入裁切")
         self.crop_btn.setEnabled(False)
-        self.crop_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1976d2;
-                color: white;
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 8px;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-                color: #888888;
-            }
-        """)
+        self.crop_btn.setProperty("variant", "primary")
+        self.crop_btn.setMinimumWidth(140)
+        self.crop_btn.setMinimumHeight(34)
+        theme.repolish(self.crop_btn)
         self.crop_btn.clicked.connect(self.go_to_crop)
         
+        self.preview_grid.add_primary_action(self.crop_btn)
         preview_layout.addWidget(self.preview_grid)
-        preview_layout.addWidget(self.crop_btn)
         
         # Page 1: Crop Editor
         self.crop_page = QWidget()
@@ -76,6 +70,8 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.crop_page)
         
         main_layout.addWidget(self.stacked_widget)
+        
+        QApplication.instance().styleHints().colorSchemeChanged.connect(lambda _: self.preview_grid.update_grid())
 
     def on_files_changed(self, is_valid):
         self.crop_btn.setEnabled(is_valid)
@@ -86,8 +82,8 @@ class MainWindow(QMainWindow):
             return
             
         self.showMaximized()
-        self.crop_editor.load_images(files)
         self.stacked_widget.setCurrentIndex(1)
+        self.crop_editor.load_images(files)
 
     def go_to_preview(self):
         self.showNormal()
@@ -112,6 +108,9 @@ class MainWindow(QMainWindow):
         self.progress_dialog = QProgressDialog("正在裁切與儲存圖片...", "取消", 0, 100, self)
         self.progress_dialog.setWindowTitle("處理中")
         self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self.progress_dialog.setMinimumDuration(0)
+        self.progress_dialog.setAutoClose(False)
+        self.progress_dialog.setValue(0)
         self.progress_dialog.show()
 
         self.thread = QThread()

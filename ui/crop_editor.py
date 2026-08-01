@@ -2,12 +2,16 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QGraphicsView, 
     QGraphicsScene, QGraphicsObject, QLabel, QSlider
 )
-from PySide6.QtCore import Qt, QRectF, Signal, QPointF
+from PySide6.QtCore import Qt, QRectF, Signal, QPointF, QTimer
 from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush, QCursor, QPainterPath
 import os
+from ui import theme
 
 class CropOverlay(QGraphicsObject):
     rectChanged = Signal(QRectF)
+    
+    MASK = QColor(0, 0, 0, 128)
+    GUIDE = QColor(255, 255, 255)
     
     def __init__(self, scene_rect, parent=None):
         super().__init__(parent)
@@ -30,7 +34,7 @@ class CropOverlay(QGraphicsObject):
 
     def paint(self, painter, option, widget):
         # Draw 50% black mask over the entire scene, except crop_rect
-        painter.setBrush(QColor(0, 0, 0, 128))
+        painter.setBrush(self.MASK)
         painter.setPen(Qt.PenStyle.NoPen)
         
         full_path = QPainterPath()
@@ -43,12 +47,12 @@ class CropOverlay(QGraphicsObject):
         painter.drawPath(mask_path)
         
         # Draw crop rect border
-        painter.setPen(QPen(QColor(255, 255, 255), 2))
+        painter.setPen(QPen(self.GUIDE, 2))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRect(self.crop_rect)
         
         # Draw handles
-        painter.setBrush(QColor(255, 255, 255))
+        painter.setBrush(self.GUIDE)
         painter.setPen(Qt.PenStyle.NoPen)
         
         # Corners
@@ -57,7 +61,7 @@ class CropOverlay(QGraphicsObject):
             painter.drawRect(c)
             
         # Edges (vertical/horizontal bars)
-        painter.setPen(QPen(QColor(255, 255, 255), 20))
+        painter.setPen(QPen(self.GUIDE, 20))
         ehs = self.edge_handle_size
         
         cx = self.crop_rect.center().x()
@@ -183,61 +187,75 @@ class CropEditor(QWidget):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         
         # Header
-        header = QHBoxLayout()
-        header.setContentsMargins(10, 10, 10, 10)
-        self.back_btn = QPushButton("返回 (Back)")
-        self.back_btn.setFixedSize(100, 40)
+        header_widget = QWidget()
+        header_widget.setObjectName("chromeBar")
+        theme.repolish(header_widget)
         
-        self.title_label = QLabel("第一張圖片作為範例")
+        header = QHBoxLayout(header_widget)
+        header.setContentsMargins(theme.SPACE["md"], theme.SPACE["md"], theme.SPACE["md"], theme.SPACE["md"])
+        header.setSpacing(theme.SPACE["sm"])
+        
+        self.back_btn = QPushButton("返回")
+        self.back_btn.setProperty("variant", "ghost")
+        theme.repolish(self.back_btn)
+        
+        self.title_label = QLabel("")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.title_label.setProperty("role", "muted")
+        theme.repolish(self.title_label)
+        
+        zoom_field_label = QLabel("縮放")
+        zoom_field_label.setProperty("role", "fieldLabel")
+        theme.repolish(zoom_field_label)
         
         self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
         self.zoom_slider.setRange(5, 20)
         self.zoom_slider.setValue(10)
         self.zoom_slider.setFixedWidth(150)
+        
         self.zoom_label = QLabel("1.0x")
+        self.zoom_label.setMinimumWidth(40)
+        self.zoom_label.setProperty("role", "muted")
+        theme.repolish(self.zoom_label)
         self.zoom_slider.valueChanged.connect(self.apply_zoom)
         
-        self.confirm_btn = QPushButton("確定裁切 (Confirm)")
-        self.confirm_btn.setFixedSize(150, 40)
-        self.confirm_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4caf50;
-                color: white;
-                font-weight: bold;
-                font-size: 14px;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """)
+        self.confirm_btn = QPushButton("確定裁切")
+        self.confirm_btn.setProperty("variant", "primary")
+        self.confirm_btn.setMinimumWidth(140)
+        self.confirm_btn.setMinimumHeight(34)
+        theme.repolish(self.confirm_btn)
         
         header.addWidget(self.back_btn)
         header.addWidget(self.title_label, 1)
-        header.addWidget(QLabel("縮放:"))
+        header.addWidget(zoom_field_label)
         header.addWidget(self.zoom_slider)
         header.addWidget(self.zoom_label)
         header.addWidget(self.confirm_btn)
         
-        layout.addLayout(header)
+        layout.addWidget(header_widget)
         
-        # Graphics View
+        # Graphics View Container
+        view_container = QWidget()
+        view_layout = QVBoxLayout(view_container)
+        view_layout.setContentsMargins(theme.SPACE["md"], 0, theme.SPACE["md"], theme.SPACE["md"])
+        view_layout.setSpacing(0)
+        
         self.view = QGraphicsView()
+        self.view.setObjectName("cropCanvas")
+        theme.repolish(self.view)
+        
         self.scene = QGraphicsScene()
         self.view.setScene(self.scene)
-        
-        # Styling
-        self.view.setStyleSheet("border: none; background-color: #222;")
         
         # Allow scrollbars for zooming
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
-        layout.addWidget(self.view)
+        view_layout.addWidget(self.view)
+        layout.addWidget(view_container)
         
         self.pixmap_item = None
         self.overlay = None
@@ -248,6 +266,9 @@ class CropEditor(QWidget):
             return
             
         first_file = files[0]
+        first_file_name = os.path.basename(first_file)
+        self.title_label.setText(f"以 {first_file_name} 為範例，設定會套用到全部 {len(files)} 張")
+        
         self.current_pixmap = QPixmap(first_file)
         
         self.scene.clear()
@@ -264,6 +285,8 @@ class CropEditor(QWidget):
         self.zoom_label.setText("1.0x")
         self.zoom_slider.blockSignals(False)
         self.apply_zoom()
+        # 首次載入時 view 還沒完成 layout，fitInView 會用到錯的 viewport 尺寸
+        QTimer.singleShot(0, self.apply_zoom)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

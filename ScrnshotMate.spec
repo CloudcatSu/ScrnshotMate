@@ -1,5 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import re
+
+# 版號單一來源：跟著 utils/helpers.py 的 APP_VERSION 走
+APP_VERSION = re.search(
+    r'APP_VERSION\s*=\s*"([^"]+)"', open('utils/helpers.py').read()
+).group(1)
 
 a = Analysis(
     ['main.py'],
@@ -46,5 +52,12 @@ app = BUNDLE(
     coll,
     name='ScrnshotMate.app',
     icon='assets/ScrnshotMate_icon.icns',
-    bundle_identifier=None,
+    bundle_identifier='com.firewatersmithy.scrnshotmate',
+    version=APP_VERSION,
+    info_plist={
+        'CFBundleShortVersionString': APP_VERSION,
+        'CFBundleVersion': APP_VERSION,
+        'NSHighResolutionCapable': True,
+        'NSRequiresAquaSystemAppearance': False,
+    },
 )

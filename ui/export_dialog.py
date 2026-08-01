@@ -4,12 +4,13 @@ from PySide6.QtWidgets import (
     QWidget, QGroupBox, QSpinBox, QMessageBox
 )
 from PySide6.QtCore import Qt
+from ui import theme
 
 class ExportDialog(QDialog):
     def __init__(self, parent=None, first_filename=""):
         super().__init__(parent)
-        self.setWindowTitle("匯出設定 (Export Settings)")
-        self.setMinimumWidth(500)
+        self.setWindowTitle("匯出設定")
+        self.setMinimumWidth(560)
         
         self.config = {}
         self.first_filename = first_filename
@@ -18,12 +19,15 @@ class ExportDialog(QDialog):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(theme.SPACE["lg"], theme.SPACE["lg"], theme.SPACE["lg"], theme.SPACE["lg"])
+        layout.setSpacing(theme.SPACE["md"])
         
         # 模式選擇
         mode_group = QGroupBox("輸出模式")
         mode_layout = QVBoxLayout()
-        self.radio_overwrite = QRadioButton("a. 對原圖片檔案裁切 (裁切後將原檔案丟至垃圾桶，並存入新檔)")
-        self.radio_save_as = QRadioButton("b. 另存新檔案")
+        mode_layout.setSpacing(theme.SPACE["sm"])
+        self.radio_overwrite = QRadioButton("覆蓋原檔（原檔移到垃圾桶，存入裁切後的新檔）")
+        self.radio_save_as = QRadioButton("另存新檔")
         self.radio_save_as.setChecked(True)
         
         self.mode_btn_group = QButtonGroup()
@@ -39,10 +43,15 @@ class ExportDialog(QDialog):
         self.save_as_widget = QWidget()
         save_as_layout = QVBoxLayout(self.save_as_widget)
         save_as_layout.setContentsMargins(0, 0, 0, 0)
+        save_as_layout.setSpacing(theme.SPACE["sm"])
         
         # 區塊一：選擇存檔類型
         type_layout = QHBoxLayout()
-        type_layout.addWidget(QLabel("存檔類型:"))
+        type_layout.setSpacing(theme.SPACE["sm"])
+        lbl_type = QLabel("存檔類型")
+        lbl_type.setProperty("role", "fieldLabel")
+        theme.repolish(lbl_type)
+        type_layout.addWidget(lbl_type)
         self.combo_format = QComboBox()
         self.combo_format.addItems(["original", "jpg", "png", "webp", "pdf"])
         type_layout.addWidget(self.combo_format)
@@ -51,8 +60,13 @@ class ExportDialog(QDialog):
         
         # 區塊二：選擇存檔路徑
         path_layout = QHBoxLayout()
-        path_layout.addWidget(QLabel("存檔路徑:"))
+        path_layout.setSpacing(theme.SPACE["sm"])
+        lbl_path = QLabel("存檔路徑")
+        lbl_path.setProperty("role", "fieldLabel")
+        theme.repolish(lbl_path)
+        path_layout.addWidget(lbl_path)
         self.path_edit = QLineEdit()
+        self.path_edit.setPlaceholderText("尚未選擇資料夾")
         self.path_btn = QPushButton("瀏覽...")
         self.path_btn.clicked.connect(self.browse_dir)
         path_layout.addWidget(self.path_edit)
@@ -62,10 +76,15 @@ class ExportDialog(QDialog):
         # 區塊三：命名規則
         self.rename_group = QGroupBox("命名規則")
         rename_layout = QVBoxLayout(self.rename_group)
+        rename_layout.setSpacing(theme.SPACE["sm"])
         
         # 命名方式切換
         rename_type_layout = QHBoxLayout()
-        rename_type_layout.addWidget(QLabel("方式:"))
+        rename_type_layout.setSpacing(theme.SPACE["sm"])
+        lbl_rename_type = QLabel("方式")
+        lbl_rename_type.setProperty("role", "fieldLabel")
+        theme.repolish(lbl_rename_type)
+        rename_type_layout.addWidget(lbl_rename_type)
         self.combo_rename_type = QComboBox()
         self.combo_rename_type.addItems(["取代文字", "加入文字", "格式化 (連續編號)", "PDF 單一檔名"])
         rename_type_layout.addWidget(self.combo_rename_type)
@@ -79,6 +98,7 @@ class ExportDialog(QDialog):
         page_replace = QWidget()
         l_replace = QHBoxLayout(page_replace)
         l_replace.setContentsMargins(0, 0, 0, 0)
+        l_replace.setSpacing(theme.SPACE["sm"])
         self.edit_target = QLineEdit()
         self.edit_target.setPlaceholderText("尋找文字")
         self.edit_replacement = QLineEdit()
@@ -92,6 +112,7 @@ class ExportDialog(QDialog):
         page_add = QWidget()
         l_add = QHBoxLayout(page_add)
         l_add.setContentsMargins(0, 0, 0, 0)
+        l_add.setSpacing(theme.SPACE["sm"])
         self.edit_prefix = QLineEdit()
         self.edit_prefix.setPlaceholderText("加入前綴")
         self.edit_suffix = QLineEdit()
@@ -105,16 +126,27 @@ class ExportDialog(QDialog):
         page_format = QWidget()
         l_format = QHBoxLayout(page_format)
         l_format.setContentsMargins(0, 0, 0, 0)
+        l_format.setSpacing(theme.SPACE["sm"])
         self.edit_base = QLineEdit()
         self.edit_base.setPlaceholderText("自訂名稱")
         l_format.addWidget(self.edit_base)
-        l_format.addWidget(QLabel("起始數字:"))
+        
+        lbl_start = QLabel("起始數字")
+        lbl_start.setProperty("role", "fieldLabel")
+        theme.repolish(lbl_start)
+        l_format.addWidget(lbl_start)
+        
         self.spin_start = QSpinBox()
         self.spin_start.setMinimum(0)
         self.spin_start.setMaximum(9999)
         self.spin_start.setValue(1)
         l_format.addWidget(self.spin_start)
-        l_format.addWidget(QLabel("位數:"))
+        
+        lbl_digits = QLabel("位數")
+        lbl_digits.setProperty("role", "fieldLabel")
+        theme.repolish(lbl_digits)
+        l_format.addWidget(lbl_digits)
+        
         self.spin_digits = QSpinBox()
         self.spin_digits.setMinimum(1)
         self.spin_digits.setMaximum(6)
@@ -126,6 +158,7 @@ class ExportDialog(QDialog):
         page_pdf = QWidget()
         l_pdf = QHBoxLayout(page_pdf)
         l_pdf.setContentsMargins(0, 0, 0, 0)
+        l_pdf.setSpacing(theme.SPACE["sm"])
         self.edit_pdf_name = QLineEdit()
         if self.first_filename:
             self.edit_pdf_name.setText(self.first_filename)
@@ -137,8 +170,10 @@ class ExportDialog(QDialog):
         rename_layout.addWidget(self.rename_stack)
         
         # Add preview label
-        self.preview_label = QLabel("範例: ")
-        self.preview_label.setStyleSheet("color: #666; font-style: italic; margin-top: 10px;")
+        self.preview_label = QLabel("")
+        self.preview_label.setProperty("role", "preview")
+        self.preview_label.setWordWrap(True)
+        theme.repolish(self.preview_label)
         rename_layout.addWidget(self.preview_label)
         
         save_as_layout.addWidget(self.rename_group)
@@ -147,11 +182,15 @@ class ExportDialog(QDialog):
         
         # Buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(theme.SPACE["sm"])
         self.btn_cancel = QPushButton("取消")
         self.btn_cancel.clicked.connect(self.reject)
-        self.btn_ok = QPushButton("確定")
+        self.btn_ok = QPushButton("開始處理")
         self.btn_ok.clicked.connect(self.accept_config)
-        self.btn_ok.setStyleSheet("background-color: #1976d2; color: white; font-weight: bold; padding: 5px 20px;")
+        self.btn_ok.setProperty("variant", "primary")
+        self.btn_ok.setMinimumWidth(120)
+        self.btn_ok.setMinimumHeight(34)
+        theme.repolish(self.btn_ok)
         
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_cancel)
@@ -189,12 +228,12 @@ class ExportDialog(QDialog):
         fmt_str = f".{ext}"
         
         if self.radio_overwrite.isChecked():
-            self.preview_label.setText(f"預覽: 將覆蓋原檔並丟進垃圾桶")
+            self.preview_label.setText("預覽　將覆蓋原檔，原檔移到垃圾桶")
             return
             
         if ext == 'pdf':
             pdf_n = self.edit_pdf_name.text() or orig_name
-            self.preview_label.setText(f"預覽: 將所有圖片合併為 {pdf_n}.pdf")
+            self.preview_label.setText(f"預覽　全部圖片合併為 {pdf_n}.pdf")
             return
             
         idx = self.combo_rename_type.currentIndex()
@@ -214,7 +253,7 @@ class ExportDialog(QDialog):
             num = str(start).zfill(digits)
             new_name = f"{base}{num}"
             
-        self.preview_label.setText(f"範例: {orig_name}  ➔  {new_name}{fmt_str}")
+        self.preview_label.setText(f"預覽　{orig_name}　➔　{new_name}{fmt_str}")
 
     def browse_dir(self):
         dir_path = QFileDialog.getExistingDirectory(self, "選擇存檔路徑")
@@ -223,6 +262,7 @@ class ExportDialog(QDialog):
 
     def toggle_save_as(self, checked):
         self.save_as_widget.setVisible(not checked)
+        self.adjustSize()
 
     def toggle_pdf(self, text):
         if text == 'pdf':
@@ -254,7 +294,7 @@ class ExportDialog(QDialog):
                 rename_rule = {'type': 'format', 'base': self.edit_base.text(), 'digits': self.spin_digits.value(), 'start': self.spin_start.value()}
 
             if not self.path_edit.text():
-                QMessageBox.warning(self, "錯誤", "請選擇存檔路徑！")
+                QMessageBox.warning(self, "尚未完成設定", "請先選擇存檔路徑")
                 return
 
             self.config = {

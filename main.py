@@ -3,6 +3,7 @@ import os
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 from ui.main_window import MainWindow
+from ui import theme
 
 def main():
     app = QApplication(sys.argv)
@@ -15,6 +16,7 @@ def main():
     
     # Optional: set a modern fusion style
     app.setStyle("Fusion")
+    theme.apply_theme(app)
     
     window = MainWindow()
     window.show()
